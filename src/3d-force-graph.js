@@ -1,7 +1,7 @@
 import './3d-force-graph.css';
 
 import './threeGlobal';
-import 'three/examples/js/controls/TrackBallControls';
+import 'three/examples/js/controls/TrackballControls';
 
 import * as d3 from 'd3-force-3d';
 import graph from 'ngraph.graph';
@@ -118,6 +118,7 @@ export default SWC.createComponent({
 		// Setup camera
 		state.camera = new THREE.PerspectiveCamera();
 		state.camera.far = 20000;
+    state.last_z = state.camera.position.z;
 
 		// Add camera interaction
 		const tbControls = new THREE.TrackballControls(state.camera, state.renderer.domElement);
@@ -155,7 +156,7 @@ export default SWC.createComponent({
 		state.infoElem.textContent = 'Loading...';
 
 		if (state.graphData.nodes.length || state.graphData.links.length) {
-			console.info('3d-force-graph loading', state.graphData.nodes.length + ' nodes', state.graphData.links.length + ' links');
+			//console.info('3d-force-graph loading', state.graphData.nodes.length + ' nodes', state.graphData.links.length + ' links');
 		}
 
 		if (!state.fetchingJson && state.jsonUrl && !state.graphData.nodes.length && !state.graphData.links.length) {
@@ -201,8 +202,9 @@ export default SWC.createComponent({
 			state.graphScene.add(node.__sphere = sphere);
 		});
 
-		const lineMaterial = new THREE.LineBasicMaterial({ color: 0xf0f0f0, transparent: true, opacity: state.lineOpacity });
+		//const lineMaterial = new THREE.LineBasicMaterial({ color: 0xf0f0f0, transparent: true, opacity: state.lineOpacity });
 		state.graphData.links.forEach(link => {
+		  let lineMaterial = new THREE.LineBasicMaterial({ color: link.color, transparent: true, opacity: link.opacity });
 			const geometry = new THREE.BufferGeometry();
 			geometry.addAttribute('position', new THREE.BufferAttribute(new Float32Array(2 * 3), 3));
 			const line = new THREE.Line(geometry, lineMaterial);
@@ -212,12 +214,13 @@ export default SWC.createComponent({
 			state.graphScene.add(link.__line = line);
 		});
 
-		if (state.camera.position.x === 0 && state.camera.position.y === 0) {
+		//if (state.camera.position.x === 0 && state.camera.position.y === 0) {
+		if (state.camera.position.x === 0 && state.camera.position.y === 0 && state.last_z == state.camera.position.z) {
 			// If camera still in default position (not user modified)
 			state.camera.lookAt(state.graphScene.position);
 			state.camera.position.z = Math.cbrt(state.graphData.nodes.length) * CAMERA_DISTANCE2NODES_FACTOR;
+      state.last_z = state.camera.position.z;
 		}
-
 		// Feed data to force-directed layout
 		const isD3Sim = state.forceEngine !== 'ngraph';
 		let layout;
@@ -230,7 +233,8 @@ export default SWC.createComponent({
 				.nodes(state.graphData.nodes)
 				.force('link')
 					.id(d => d[state.idField])
-					.links(state.graphData.links);
+					.links(state.graphData.links)
+          .distance(function(d) { return d.distance})
 		} else {
 			// ngraph
 			const graph = ngraph.graph();
